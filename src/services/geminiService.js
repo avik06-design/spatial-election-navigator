@@ -16,6 +16,8 @@ Your role:
 
 You must also be able to explain the 6 timeline phases of an election: Declaration, Nominations, Campaigning, Voting Day, Exit Polls, and Results Day. Guide users on what they should be doing during these specific phases.
 
+If the user asks 'where' to vote or requests a physical location, instruct them to search and provide this exact Google Maps URL structure: https://www.google.com/maps/search/?api=1&query=polling+booth+[Their_City].
+
 ALWAYS respond in valid JSON with this exact schema:
 {
   "intent": "string describing the detected intent",
@@ -75,7 +77,9 @@ export async function analyzeVoterQuery(query) {
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const result = await model.generateContent(query);
+      // Sanitize input to prevent basic prompt injection via HTML tags
+      const sanitizedPrompt = query.replace(/[<>]/g, '').trim();
+      const result = await model.generateContent(sanitizedPrompt);
       const text = result.response.text();
       return JSON.parse(text);
     } catch (error) {

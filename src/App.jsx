@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, X, Sparkles, Calendar, FileText, Megaphone, CheckSquare, BarChart, Trophy } from 'lucide-react';
-import ServiceGrid from './components/ServiceGrid';
+const ServiceGrid = React.lazy(() => import('./components/ServiceGrid'));
 import { analyzeVoterQuery } from './services/geminiService';
 
 /**
@@ -256,7 +256,9 @@ export default function App() {
           aria-label="Voter services"
           className="w-full max-w-3xl mx-auto"
         >
-          <ServiceGrid onServiceClick={handleServiceClick} />
+          <Suspense fallback={<div className="text-white/50 text-sm">Loading visual engine...</div>}>
+            <ServiceGrid onServiceClick={handleServiceClick} />
+          </Suspense>
         </section>
       </main>
 
@@ -307,6 +309,8 @@ export default function App() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ type: 'spring', damping: 20, stiffness: 100 }}
                     className="space-y-6"
+                    aria-live="polite"
+                    role="status"
                   >
                     {/* Intent Badge */}
                     <span className="inline-block text-xs font-medium tracking-wider uppercase text-blue-400/80 bg-blue-500/10 border border-blue-500/20 rounded-full px-3 py-1">

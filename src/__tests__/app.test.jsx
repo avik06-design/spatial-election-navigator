@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import App from '../App';
 
 /**
  * Test suite for the App root component.
  * Validates rendering, accessibility semantics, and interactive elements.
+ * Uses waitFor for lazy-loaded components (React.lazy + Suspense).
  */
 describe('App', () => {
   it('renders without crashing', () => {
@@ -40,36 +41,43 @@ describe('App', () => {
     expect(input).toHaveValue('I turned 18');
   });
 
-  it('renders all 4 ECI service cards', () => {
+  it('renders all 4 ECI service cards after lazy load', async () => {
     render(<App />);
-    expect(screen.getByText('New Voter Registration')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('New Voter Registration')).toBeInTheDocument();
+    });
     expect(screen.getByText('Shift / Correction of Entries')).toBeInTheDocument();
     expect(screen.getByText('Aadhaar Linking')).toBeInTheDocument();
     expect(screen.getByText('Track Application Status')).toBeInTheDocument();
   });
 
-  it('has a services list with correct ARIA role', () => {
+  it('has a services list with correct ARIA role', async () => {
     render(<App />);
-    const list = screen.getByRole('list', { name: 'ECI voter services' });
-    expect(list).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('list', { name: 'ECI voter services' })).toBeInTheDocument();
+    });
   });
 
-  it('opens detail panel when a service card is clicked', () => {
+  it('opens detail panel when a service card is clicked', async () => {
     render(<App />);
-    const card = screen.getByLabelText('New Voter Registration — Form 6');
-    fireEvent.click(card);
+    await waitFor(() => {
+      expect(screen.getByLabelText('New Voter Registration — Form 6')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByLabelText('New Voter Registration — Form 6'));
     const panel = screen.getByRole('dialog');
     expect(panel).toBeInTheDocument();
   });
 
-  it('closes detail panel when close button is clicked', () => {
+  it('closes detail panel when close button is clicked', async () => {
     render(<App />);
+    await waitFor(() => {
+      expect(screen.getByLabelText('New Voter Registration — Form 6')).toBeInTheDocument();
+    });
     // Open panel
     fireEvent.click(screen.getByLabelText('New Voter Registration — Form 6'));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     // Close it
     fireEvent.click(screen.getByLabelText('Close detail panel'));
-    // Panel should be animating out — check it's no longer a dialog
-    // AnimatePresence may keep it briefly; verify the state resets
+    // Panel should be animating out
   });
 });
