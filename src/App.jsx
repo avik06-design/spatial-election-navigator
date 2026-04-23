@@ -195,6 +195,9 @@ export default function App() {
 
   return (
     <div className="relative w-full h-screen bg-[#000000] overflow-hidden">
+      {/* Skip Navigation Link — WCAG 2.1 AA */}
+      <a href="#main-content" className="skip-link">Skip to main content</a>
+
       {/* Screen-reader accessible description of the spatial interface */}
       <div className="sr-only" role="region" aria-label="Interactive 3D Election Hub Navigation">
         This application provides an interactive election information hub. Use the search bar to ask Eluide for voter guidance, browse the election timeline phases, or select a service card to access ECI forms and resources.

@@ -1,11 +1,18 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 /**
- * System instruction defining Eluide's persona and ECI domain expertise.
- * Constrains the model to return structured JSON for deterministic UI rendering.
- * @constant {string}
+ * Generates the system instruction for Eluide with optional user context.
+ * Enables contextual decision-making based on the user's region or situation.
+ *
+ * @param {string} [userContext] - Optional regional context (e.g., 'Maharashtra', 'first-time voter').
+ * @returns {string} The complete system instruction string.
  */
-const SYSTEM_INSTRUCTION = `You are Eluide, an expert AI assistant for Indian citizens navigating the Election Commission of India (ECI) portal.
+function buildSystemInstruction(userContext) {
+  const contextLine = userContext
+    ? `\nThe user is asking about elections in the context of: ${userContext}. Tailor deadlines, rules, and regional guidance accordingly.`
+    : '';
+
+  return `You are Eluide, an expert AI assistant for Indian citizens navigating the Election Commission of India (ECI) portal.${contextLine}
 
 Your role:
 - If a user says "I turned 18" or "I want to register", suggest Form 6 (New Voter Registration).
@@ -29,20 +36,26 @@ ALWAYS respond in valid JSON with this exact schema:
 }
 
 DO NOT use markdown formatting, backticks, or conversational text. Output ONLY the raw, minified JSON object.`;
+}
 
 /**
  * Lazily initializes and caches the Gemini GenerativeModel instance.
  * Uses IIFE closure to ensure single instantiation across the module lifecycle.
+ * Rebuilds the model if userContext changes.
  *
+ * @param {string} [userContext] - Optional regional context for the system instruction.
  * @returns {import('@google/generative-ai').GenerativeModel} Configured Gemini model.
  * @throws {Error} If VITE_GEMINI_API_KEY is not set in environment variables.
  */
 const getModel = (() => {
   /** @type {import('@google/generative-ai').GenerativeModel | null} */
   let model = null;
+  /** @type {string|undefined} */
+  let cachedContext;
 
-  return () => {
-    if (!model) {
+  return (userContext) => {
+    if (!model || cachedContext !== userContext) {
+      cachedContext = userContext;
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (!apiKey) {
         throw new Error(
@@ -52,7 +65,7 @@ const getModel = (() => {
       const genAI = new GoogleGenerativeAI(apiKey);
       model = genAI.getGenerativeModel({
         model: 'gemini-2.5-flash',
-        systemInstruction: SYSTEM_INSTRUCTION,
+        systemInstruction: buildSystemInstruction(userContext),
         generationConfig: {
           temperature: 0.3,
           maxOutputTokens: 256,
@@ -68,7 +81,8 @@ const getModel = (() => {
  * Analyzes a voter query using Gemini and returns structured intent data.
  *
  * @param {string} query - The user's natural language question about ECI services.
- * @returns {Promise<{intent: string, helpful_text: string, recommended_form: string|null}>}
+ * @param {string} [userContext] - Optional regional/situational context.
+ * @returns {Promise<{intent: string, helpful_text: string, recommended_form: string|null, summary: string, actionSteps: string[], urgency: string}>}
  *   Parsed JSON response with detected intent, helpful guidance, and recommended form.
  * @throws {Error} Propagates API or parsing errors to the caller for UI handling.
  *
@@ -76,9 +90,9 @@ const getModel = (() => {
  * const result = await analyzeVoterQuery("I just turned 18 and want to vote");
  * // => { intent: "new_registration", helpful_text: "...", recommended_form: "Form 6" }
  */
-export async function analyzeVoterQuery(query) {
+export async function analyzeVoterQuery(query, userContext) {
   const MAX_RETRIES = 3;
-  const model = getModel();
+  const model = getModel(userContext);
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
