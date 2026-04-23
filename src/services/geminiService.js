@@ -26,7 +26,9 @@ ALWAYS respond in valid JSON with this exact schema:
   "summary": "one-line summary of the guidance",
   "actionSteps": ["step 1", "step 2"],
   "urgency": "high | medium | low"
-}`;
+}
+
+DO NOT use markdown formatting, backticks, or conversational text. Output ONLY the raw, minified JSON object.`;
 
 /**
  * Lazily initializes and caches the Gemini GenerativeModel instance.
@@ -83,8 +85,34 @@ export async function analyzeVoterQuery(query) {
       // Sanitize input to prevent basic prompt injection via HTML tags
       const sanitizedPrompt = query.replace(/[<>]/g, '').trim();
       const result = await model.generateContent(sanitizedPrompt);
-      const text = result.response.text();
-      return JSON.parse(text);
+      const rawText = result.response.text();
+
+      // Strip markdown code blocks that break JSON.parse
+      let cleanText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+      // Extract just the JSON object if surrounded by conversational text
+      const jsonStart = cleanText.indexOf('{');
+      const jsonEnd = cleanText.lastIndexOf('}');
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        cleanText = cleanText.substring(jsonStart, jsonEnd + 1);
+      }
+
+      let parsedData;
+      try {
+        parsedData = JSON.parse(cleanText);
+      } catch (parseError) {
+        console.error('[Eluide] Failed to parse cleaned JSON:', cleanText);
+        // Fallback structure to prevent UI crash
+        parsedData = {
+          intent: 'parse_error',
+          helpful_text: rawText.substring(0, 200),
+          recommended_form: null,
+          summary: 'I found the information, but the data format was interrupted. Please try asking again.',
+          actionSteps: ['Refresh the page', 'Try a shorter query'],
+          urgency: 'medium',
+        };
+      }
+      return parsedData;
     } catch (error) {
       const msg = error.message || '';
       const isRetryable = msg.includes('503') || msg.toLowerCase().includes('high demand');
