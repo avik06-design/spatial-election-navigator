@@ -1,6 +1,7 @@
-import React, { useState, useCallback, Suspense } from 'react';
+import React, { useState, useCallback, useEffect, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, X, Sparkles, Calendar, FileText, Megaphone, CheckSquare, BarChart, Trophy } from 'lucide-react';
+import { ArrowRight, X, Sparkles, Calendar, FileText, Megaphone, CheckSquare, BarChart, Trophy, Mic } from 'lucide-react';
+import DOMPurify from 'dompurify';
 const ServiceGrid = React.lazy(() => import('./components/ServiceGrid'));
 import { analyzeVoterQuery } from './services/geminiService';
 
@@ -87,6 +88,62 @@ export default function App() {
   const [novaResponse, setNovaResponse] = useState(/** @type {EluideResponse|null} */ (null));
   const [isLoading, setIsLoading] = useState(false);
   const [hoveredPhase, setHoveredPhase] = useState(null);
+  const [isListening, setIsListening] = useState(false);
+  const panelRef = useRef(null);
+
+  /**
+   * Focus trap — prevents Tab from escaping the detail modal while it is open.
+   * Traps focus within the panel by intercepting Tab/Shift+Tab on the boundary elements.
+   */
+  useEffect(() => {
+    if (!activeService || !panelRef.current) return;
+    const panel = panelRef.current;
+    const focusable = panel.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    first.focus();
+
+    const handleKeyDown = (e) => {
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+      if (e.key === 'Escape') handleClose();
+    };
+    panel.addEventListener('keydown', handleKeyDown);
+    return () => panel.removeEventListener('keydown', handleKeyDown);
+  }, [activeService]);
+
+  /**
+   * Activates the Web Speech API to capture voice input.
+   * Sets the recognized transcript into the search query state.
+   */
+  const handleVoiceInput = useCallback(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in this browser.');
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-IN';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setQuery(transcript);
+    };
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+
+    recognition.start();
+  }, []);
 
   /**
    * Handles search form submission. Sends the query to Gemini for analysis
@@ -137,6 +194,11 @@ export default function App() {
 
   return (
     <div className="relative w-full h-screen bg-[#000000] overflow-hidden">
+      {/* Screen-reader accessible description of the spatial interface */}
+      <div className="sr-only" role="region" aria-label="Interactive 3D Election Hub Navigation">
+        This application provides an interactive election information hub. Use the search bar to ask Eluide for voter guidance, browse the election timeline phases, or select a service card to access ECI forms and resources.
+      </div>
+
       {/* ─── Main Content ─── */}
       <main
         role="main"
@@ -200,6 +262,18 @@ export default function App() {
               className="p-3 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all duration-300 disabled:opacity-30 focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:outline-none flex-shrink-0"
             >
               <ArrowRight size={20} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={handleVoiceInput}
+              aria-label="Voice input"
+              className={`p-3 ml-1 rounded-xl transition-all duration-300 focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:outline-none flex-shrink-0 ${
+                isListening
+                  ? 'bg-red-500/30 text-red-400 animate-pulse'
+                  : 'bg-white/10 hover:bg-white/20 text-white'
+              }`}
+            >
+              <Mic size={20} aria-hidden="true" />
             </button>
           </motion.form>
         </section>
@@ -275,6 +349,7 @@ export default function App() {
             aria-modal="true"
             aria-label={`${activeService} details panel`}
             className="absolute z-50 bg-black/40 backdrop-blur-3xl p-8 shadow-2xl overflow-y-auto border-white/10 bottom-0 w-full h-[85vh] rounded-t-3xl border-t md:top-0 md:right-0 md:w-[450px] md:h-full md:border-t-0 md:border-l md:rounded-none"
+            ref={panelRef}
           >
             <div className="p-8 md:p-10 flex flex-col min-h-full">
               {/* Panel Header */}
@@ -317,10 +392,11 @@ export default function App() {
                       {novaResponse.intent}
                     </span>
 
-                    {/* Response Text */}
-                    <p className="text-white/70 text-base leading-relaxed font-light">
-                      {novaResponse.helpful_text}
-                    </p>
+                    {/* Response Text — sanitized via DOMPurify */}
+                    <div
+                      className="text-white/70 text-base leading-relaxed font-light"
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(novaResponse.helpful_text) }}
+                    />
 
                     {/* Recommended Form CTA */}
                     {novaResponse.recommended_form && (

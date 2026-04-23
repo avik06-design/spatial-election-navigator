@@ -22,7 +22,10 @@ ALWAYS respond in valid JSON with this exact schema:
 {
   "intent": "string describing the detected intent",
   "helpful_text": "string with a helpful, concise explanation (max 3 sentences)",
-  "recommended_form": "Form 6 | Form 8 | Form 6B | Tracker | null"
+  "recommended_form": "Form 6 | Form 8 | Form 6B | Tracker | null",
+  "summary": "one-line summary of the guidance",
+  "actionSteps": ["step 1", "step 2"],
+  "urgency": "high | medium | low"
 }`;
 
 /**

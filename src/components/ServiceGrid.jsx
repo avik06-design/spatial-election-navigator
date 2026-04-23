@@ -4,14 +4,23 @@ import { UserPlus, ArrowRightLeft, Fingerprint, Search } from 'lucide-react';
 
 /**
  * @typedef {Object} ServiceItem
- * @property {string} id - Unique identifier for the service.
+ * @property {string} id - Unique identifier for the service (e.g., 'registration').
  * @property {string} title - Display title of the ECI service.
- * @property {string} description - Brief description of the service purpose.
- * @property {string} form - Associated ECI form identifier.
- * @property {import('lucide-react').LucideIcon} icon - Lucide icon component.
+ * @property {string} description - Brief description of the service purpose and associated form.
+ * @property {string} form - Official ECI form identifier (e.g., 'Form 6', 'Form 8').
+ * @property {import('lucide-react').LucideIcon} icon - Lucide React icon component reference.
  */
 
-/** @type {ServiceItem[]} */
+/**
+ * @typedef {Object} ServiceGridProps
+ * @property {(serviceId: string) => void} onServiceClick - Callback invoked with the service ID when a card is activated.
+ */
+
+/**
+ * Static array of ECI voter services with associated form metadata and icons.
+ * Frozen at module level for referential stability across renders.
+ * @type {Readonly<ServiceItem[]>}
+ */
 const SERVICES = [
   {
     id: 'registration',
