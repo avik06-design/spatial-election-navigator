@@ -4,6 +4,7 @@ import { ArrowRight, X, Sparkles, Calendar, FileText, Megaphone, CheckSquare, Ba
 import DOMPurify from 'dompurify';
 const ServiceGrid = React.lazy(() => import('./components/ServiceGrid'));
 import { analyzeVoterQuery } from './services/geminiService';
+import { generateGoogleCalendarLink } from './utils/calendarService';
 
 /**
  * Simplified ECI knowledge base mapping service IDs to their
@@ -201,6 +202,7 @@ export default function App() {
 
       {/* ─── Main Content ─── */}
       <main
+        id="main-content"
         role="main"
         className="relative z-10 w-full h-full overflow-y-auto flex flex-col items-center px-6 py-16 md:py-24"
       >
@@ -325,6 +327,24 @@ export default function App() {
           </div>
         </section>
 
+        {/* Google Calendar CTA */}
+        <div className="w-full max-w-4xl mx-auto mb-8 flex justify-center">
+          <a
+            href={generateGoogleCalendarLink(
+              'General Election 2026 — Voting Day',
+              'Remember to bring your EPIC (Voter ID) card and a valid photo ID. Polls open 7 AM — 6 PM. Find your booth at voters.eci.gov.in',
+              '20260501'
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Add Election Day to Google Calendar"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl text-white/80 text-sm font-medium tracking-wide hover:bg-white/[0.08] hover:text-white hover:border-white/20 transition-all duration-500 focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:outline-none"
+          >
+            <Calendar size={16} aria-hidden="true" />
+            Add Election Day to Google Calendar
+          </a>
+        </div>
+
         {/* Service Grid */}
         <section
           aria-label="Voter services"
@@ -385,7 +405,7 @@ export default function App() {
                     transition={{ type: 'spring', damping: 20, stiffness: 100 }}
                     className="space-y-6"
                     aria-live="polite"
-                    role="status"
+                    role="log"
                   >
                     {/* Intent Badge */}
                     <span className="inline-block text-xs font-medium tracking-wider uppercase text-blue-400/80 bg-blue-500/10 border border-blue-500/20 rounded-full px-3 py-1">

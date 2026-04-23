@@ -76,13 +76,19 @@ const cardVariants = {
 };
 
 /**
- * ServiceGrid renders a responsive grid of glassmorphic ECI service cards.
- * Memoized with React.memo to prevent unnecessary re-renders when parent state
- * (e.g., chat input) changes without affecting the grid.
+ * ServiceGrid renders a responsive 2×2 grid of glassmorphic ECI service cards.
  *
- * @param {Object} props
- * @param {(serviceId: string) => void} props.onServiceClick - Callback fired when a service card is activated.
- * @returns {JSX.Element} A 2x2 responsive grid of animated service cards.
+ * Performance: Memoized with `React.memo` to prevent unnecessary re-renders
+ * when unrelated parent state (e.g., chat input value) changes.
+ *
+ * Accessibility: Each card is a `<button>` with `role="listitem"` and a
+ * composite `aria-label` combining the service title and form name.
+ *
+ * @type {React.NamedExoticComponent<ServiceGridProps>}
+ * @param {ServiceGridProps} props - Component props.
+ * @param {(serviceId: string) => void} props.onServiceClick - Callback invoked with
+ *   the service ID string (e.g., 'registration', 'correction') when a card is clicked.
+ * @returns {JSX.Element} An animated grid of 4 ECI service action cards.
  */
 const ServiceGrid = React.memo(function ServiceGrid({ onServiceClick }) {
   return (

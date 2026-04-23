@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import App from '../App';
+import { checkRateLimit } from '../utils/rateLimit';
+import { generateGoogleCalendarLink } from '../utils/calendarService';
 
 /**
  * Test suite for the App root component.
@@ -21,10 +23,11 @@ describe('App', () => {
     expect(heading.tagName).toBe('H1');
   });
 
-  it('has a semantic main landmark with role="main"', () => {
+  it('has a semantic main landmark with role="main" and id="main-content"', () => {
     render(<App />);
     const main = screen.getByRole('main');
     expect(main).toBeInTheDocument();
+    expect(main).toHaveAttribute('id', 'main-content');
   });
 
   it('renders the search input with correct aria-label', () => {
@@ -73,11 +76,59 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('New Voter Registration — Form 6')).toBeInTheDocument();
     });
-    // Open panel
     fireEvent.click(screen.getByLabelText('New Voter Registration — Form 6'));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    // Close it
     fireEvent.click(screen.getByLabelText('Close detail panel'));
-    // Panel should be animating out
+  });
+
+  it('has an sr-only region for the 3D Election Hub description', () => {
+    render(<App />);
+    const region = screen.getByRole('region', { name: 'Interactive 3D Election Hub Navigation' });
+    expect(region).toBeInTheDocument();
+  });
+
+  it('renders the Google Calendar CTA link', () => {
+    render(<App />);
+    const calLink = screen.getByLabelText('Add Election Day to Google Calendar');
+    expect(calLink).toBeInTheDocument();
+    expect(calLink).toHaveAttribute('target', '_blank');
+    expect(calLink).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(calLink.href).toContain('calendar.google.com');
+  });
+
+  it('renders the microphone voice input button', () => {
+    render(<App />);
+    const micBtn = screen.getByLabelText('Voice input');
+    expect(micBtn).toBeInTheDocument();
+  });
+});
+
+/**
+ * Rate Limiter unit tests.
+ */
+describe('checkRateLimit', () => {
+  it('allows requests under the limit', () => {
+    expect(checkRateLimit('test-allow')).toBe(true);
+  });
+
+  it('throws when rate limit is exceeded', () => {
+    const userId = 'test-exceed-' + Date.now();
+    for (let i = 0; i < 10; i++) {
+      checkRateLimit(userId);
+    }
+    expect(() => checkRateLimit(userId)).toThrow('Rate limit exceeded');
+  });
+});
+
+/**
+ * Google Calendar Service unit tests.
+ */
+describe('generateGoogleCalendarLink', () => {
+  it('returns a valid Google Calendar URL', () => {
+    const url = generateGoogleCalendarLink('Test Event', 'Details here', '20260501');
+    expect(url).toContain('https://calendar.google.com/calendar/render');
+    expect(url).toContain('action=TEMPLATE');
+    expect(url).toContain('text=Test+Event');
+    expect(url).toContain('dates=20260501');
   });
 });
